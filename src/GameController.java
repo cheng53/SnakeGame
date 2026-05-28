@@ -9,7 +9,7 @@ public class GameController extends KeyAdapter {
 
     // 核心計時器
     private Timer gameTimer;      // 控制蛇移動
-    private Timer survivalTimer;  // 每 10 秒縮短身體
+    //private Timer survivalTimer;  // 每 10 秒縮短身體
     private Timer itemRefreshTimer; // 專門負責每 5 秒刷新道具
     // 狀態層級
     private int stunLayers = 0;
@@ -27,14 +27,14 @@ public class GameController extends KeyAdapter {
         gameTimer = new Timer(BASE_SPEED, e -> moveSnake());
 
         // 身體縮短計時器：每 10 秒觸發一次
-        survivalTimer = new Timer(10000, e -> {
+       /* survivalTimer = new Timer(10000, e -> {
             if (model.bodyLength > 0) {
                 model.bodyLength--;
                 panel.repaint();
             } else {
                 gameOver();
             }
-        });
+        });*/
 
         // 道具刷新計時器：每 5 秒觸發一次
         itemRefreshTimer = new Timer(5000, e -> {
@@ -46,7 +46,7 @@ public class GameController extends KeyAdapter {
     public void startGame() {
         // 1. 停止舊的計時器
         gameTimer.stop();
-        survivalTimer.stop();
+        //survivalTimer.stop();
         itemRefreshTimer.stop(); // 停止舊的
         model.gameSession++;// 關鍵：每一局新遊戲都有獨一無二的編號
         // 2. 重置數據與方向
@@ -64,7 +64,7 @@ public class GameController extends KeyAdapter {
 
         // 4. 重新啟動
         gameTimer.start();
-        survivalTimer.start();
+        //survivalTimer.start();
         itemRefreshTimer.start(); // 啟動新的
         spawnItems();
     }
@@ -206,7 +206,7 @@ public class GameController extends KeyAdapter {
     }
     private void gameOver() {
         gameTimer.stop();
-        survivalTimer.stop();
+        //survivalTimer.stop();
         itemRefreshTimer.stop(); // 停止
         model.updateHighScore();
         javax.swing.JOptionPane.showMessageDialog(panel, "遊戲結束！總分: " + model.score);

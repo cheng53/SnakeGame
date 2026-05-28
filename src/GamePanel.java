@@ -9,11 +9,14 @@ public class GamePanel extends JPanel {
     private GameModel model;
     public Image redImg, goldImg, poisonImg, stunImg, speedImg, trophyImg;
     public final int TILE_SIZE = 35;
-    private final int GRID_COUNT = 20;
+    private final int GRID_COUNT;
     private final int HEADER_HEIGHT = 80;
 
     public GamePanel(GameModel model) {
         this.model = model;
+        this.GRID_COUNT = model.GRID_SIZE;
+
+
         setPreferredSize(new Dimension(TILE_SIZE * GRID_COUNT, TILE_SIZE * GRID_COUNT + HEADER_HEIGHT));
         setBackground(Color.BLACK);
 
@@ -81,8 +84,8 @@ public class GamePanel extends JPanel {
 
 // 3. 遊戲區棋盤格 (Grid) 的深淺綠
         g2d.translate(0, HEADER_HEIGHT);
-        for (int row = 0; row < 20; row++) {
-            for (int col = 0; col < 20; col++) {
+        for (int row = 0; row < GRID_COUNT; row++) {
+            for (int col = 0; col < GRID_COUNT; col++) {
                 if ((row + col) % 2 == 0) {
                     g2d.setColor(new Color(170, 215, 81)); // 淺草綠
                 } else {

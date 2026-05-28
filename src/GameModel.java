@@ -3,7 +3,7 @@ import java.util.List;
 
 public class GameModel {
     // 遊戲參數
-    public final int GRID_SIZE = 20; // 20x20 的格子
+    public final int GRID_SIZE = 10; // 10*10 的格子
     public int score = 0;
     public int highScore = 0;
     public int bodyLength = 2; // 初始身體長度 (不含頭尾)
@@ -27,11 +27,11 @@ public class GameModel {
         snake.clear();
         items.clear();
 
-        // 初始位置：頭在 (10,10)，身體在下方
-        snake.add(new SnakeNode(10, 10, "HEAD"));
-        snake.add(new SnakeNode(10, 11, "BODY"));
-        snake.add(new SnakeNode(10, 12, "BODY"));
-        snake.add(new SnakeNode(10, 13, "TAIL"));
+        // 初始位置：頭在 (5,5)，身體在下方
+        snake.add(new SnakeNode(5, 5, "HEAD"));
+        snake.add(new SnakeNode(5, 6, "BODY"));
+        snake.add(new SnakeNode(5, 7, "BODY"));
+        snake.add(new SnakeNode(5, 8, "TAIL"));
     }
 
     // 檢查座標是否撞到蛇全身

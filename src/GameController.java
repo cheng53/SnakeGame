@@ -75,7 +75,7 @@ public class GameController extends KeyAdapter {
         int newY = model.snake.get(0).y + dy;
 
         // 死亡判定：撞牆、撞自己
-        if (newX < 0 || newX >= 20 || newY < 0 || newY >= 20 || model.checkCollision(newX, newY)) {
+        if (newX < 0 || newX >= model.GRID_SIZE || newY < 0 || newY >= model.GRID_SIZE || model.checkCollision(newX, newY)) {
             gameOver();
             return;
         }
@@ -178,8 +178,8 @@ public class GameController extends KeyAdapter {
         model.items.clear();
         Random r = new Random();
         while (model.items.size() < 5) {
-            int rx = r.nextInt(20);
-            int ry = r.nextInt(20);
+            int rx = r.nextInt(model.GRID_SIZE);
+            int ry = r.nextInt(model.GRID_SIZE);
             // 檢查座標是否重疊 (蛇身或其他已生成的道具)
             boolean itemOverlap = false;
             for (Item existingItem : model.items) {

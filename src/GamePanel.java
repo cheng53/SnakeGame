@@ -44,53 +44,47 @@ public class GamePanel extends JPanel {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // 1. 繪製 Header
-        g2d.setColor(new Color(74, 117, 44));
-        g2d.fillRect(0, 0, getWidth(), HEADER_HEIGHT);
+        int panelWidth = getWidth();
+        int panelHeight = getHeight();
+        int gameWidth = TILE_SIZE * GRID_COUNT;
+        int gameHeight = TILE_SIZE * GRID_COUNT;
 
-        // --- 左側：當前分數 (加上 "SCORE: " 字樣) ---
+        // --- 先畫 Header，貼到頂部 ---
+        g2d.setColor(new Color(74, 117, 44));
+        g2d.fillRect(0, 0, panelWidth, HEADER_HEIGHT); // 整個面板寬度
         g2d.setColor(Color.WHITE);
         g2d.setFont(new Font("Arial", Font.BOLD, 26));
-        g2d.drawString("SCORE: " + model.score, 20, 52); // X=20 比較保險
+        g2d.drawString("SCORE: " + model.score, 20, 52);
 
-        // --- 中間：狀態提示 (固定位置，由左至右) ---
-        g2d.setFont(new Font("Microsoft JhengHei", Font.BOLD, 26));
-
-        // 位置 A (加速): X=220
         if (model.isSpeedUp) {
             g2d.setColor(Color.CYAN);
             g2d.drawString("加速中", 220, 52);
         }
-
-        // 位置 B (暈眩): X=330
         if (model.isStunned) {
             g2d.setColor(Color.GREEN);
             g2d.drawString("暈眩中", 330, 52);
         }
-
-        // 位置 C (瀕死): X=440
         if (model.bodyLength <= 0) {
             g2d.setColor(Color.RED);
             g2d.drawString("瀕死警告!", 440, 52);
         }
 
-        // --- 右側：最高分 ---
-        g2d.setColor(Color.WHITE);
-        g2d.setFont(new Font("Arial", Font.BOLD, 26));
+        // --- 右側最高分 ---
         if (trophyImg != null) {
-            g2d.drawImage(trophyImg, 580, 18, 45, 45, null);
+            g2d.drawImage(trophyImg, panelWidth - 65, 18, 45, 45, null);
         }
-        g2d.drawString("" + model.highScore, 635, 52);
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("" + model.highScore, panelWidth - 5 - g2d.getFontMetrics().stringWidth("" + model.highScore), 52);
 
-// 3. 遊戲區棋盤格 (Grid) 的深淺綠
-        g2d.translate(0, HEADER_HEIGHT);
+        // --- 計算棋盤置中偏移，只影響棋盤和蛇 ---
+        int offsetX = (panelWidth - gameWidth) / 2;
+        int offsetY = HEADER_HEIGHT + (panelHeight - HEADER_HEIGHT - gameHeight) / 2;
+        g2d.translate(offsetX, offsetY);
+
+        // 畫棋盤
         for (int row = 0; row < GRID_COUNT; row++) {
             for (int col = 0; col < GRID_COUNT; col++) {
-                if ((row + col) % 2 == 0) {
-                    g2d.setColor(new Color(170, 215, 81)); // 淺草綠
-                } else {
-                    g2d.setColor(new Color(162, 209, 73)); // 深草綠
-                }
+                g2d.setColor((row + col) % 2 == 0 ? new Color(170, 215, 81) : new Color(162, 209, 73));
                 g2d.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
         }

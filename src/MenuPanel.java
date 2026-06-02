@@ -31,5 +31,7 @@ public class MenuPanel extends JPanel {
         int btnWidth = 200;
         int btnHeight = 60;
         startBtn.setBounds((panelWidth - btnWidth) / 2, panelHeight / 2, btnWidth, btnHeight);
+
+
     }
 }

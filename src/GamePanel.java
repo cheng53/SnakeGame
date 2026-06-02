@@ -131,5 +131,6 @@ public class GamePanel extends JPanel {
         }
 
         g2d.translate(0, -HEADER_HEIGHT);
+
     }
 }

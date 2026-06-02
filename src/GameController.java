@@ -211,5 +211,6 @@ public class GameController extends KeyAdapter {
         model.updateHighScore();
         javax.swing.JOptionPane.showMessageDialog(panel, "遊戲結束！總分: " + model.score);
         startGame();
+
     }
 }

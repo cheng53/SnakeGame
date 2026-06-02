@@ -46,6 +46,7 @@ public class GameModel {
     public void updateHighScore() {
         if (score > highScore) {
             highScore = score;
+
         }
     }
 }

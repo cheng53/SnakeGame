@@ -9,7 +9,7 @@ public class MainFrame extends JFrame {
     private GameController controller;
 
     public MainFrame() {
-        setTitle("期末專案：生存貪吃蛇");
+        setTitle("期末專案：貪吃蛇PRO");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
 

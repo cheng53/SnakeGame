@@ -1,4 +1,5 @@
 import javax.swing.Timer;
+import java.awt.Point;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.Random;
@@ -7,16 +8,12 @@ public class GameController extends KeyAdapter {
     private GameModel model;
     private GamePanel panel;
 
-    // 核心計時器
-    private Timer gameTimer;      // 控制蛇移動
-    //private Timer survivalTimer;  // 每 10 秒縮短身體
-    private Timer itemRefreshTimer; // 專門負責每 5 秒刷新道具
-    // 狀態層級
+    private Timer gameTimer;
+    private Timer itemRefreshTimer;
     private int stunLayers = 0;
     private int speedLayers = 0;
-    private final int BASE_SPEED = 200; // 基礎移動速度
+    private final int BASE_SPEED = 200;
 
-    // 移動方向
     private int dx = 0, dy = -1;
     private int nextDx = 0, nextDy = -1;
 
@@ -25,18 +22,6 @@ public class GameController extends KeyAdapter {
         this.panel = panel;
 
         gameTimer = new Timer(BASE_SPEED, e -> moveSnake());
-
-        // 身體縮短計時器：每 10 秒觸發一次
-       /* survivalTimer = new Timer(10000, e -> {
-            if (model.bodyLength > 0) {
-                model.bodyLength--;
-                panel.repaint();
-            } else {
-                gameOver();
-            }
-        });*/
-
-        // 道具刷新計時器：每 5 秒觸發一次
         itemRefreshTimer = new Timer(5000, e -> {
             spawnItems();
             panel.repaint();
@@ -44,28 +29,20 @@ public class GameController extends KeyAdapter {
     }
 
     public void startGame() {
-        // 1. 停止舊的計時器
         gameTimer.stop();
-        //survivalTimer.stop();
-        itemRefreshTimer.stop(); // 停止舊的
-        model.gameSession++;// 關鍵：每一局新遊戲都有獨一無二的編號
-        // 2. 重置數據與方向
+        itemRefreshTimer.stop();
+        model.gameSession++;
         model.reset();
+
         model.isStunned = false;
         model.isSpeedUp = false;
         this.stunLayers = 0;
         this.speedLayers = 0;
         dx = 0; dy = -1; nextDx = 0; nextDy = -1;
-        stunLayers = 0;
-        speedLayers = 0;
 
-        // 3. 重置速度延遲
         gameTimer.setDelay(BASE_SPEED);
-
-        // 4. 重新啟動
         gameTimer.start();
-        //survivalTimer.start();
-        itemRefreshTimer.start(); // 啟動新的
+        itemRefreshTimer.start();
         spawnItems();
     }
 
@@ -74,16 +51,67 @@ public class GameController extends KeyAdapter {
         int newX = model.snake.get(0).x + dx;
         int newY = model.snake.get(0).y + dy;
 
-        // 死亡判定：撞牆、撞自己
-        if (newX < 0 || newX >= model.GRID_SIZE || newY < 0 || newY >= model.GRID_SIZE || model.checkCollision(newX, newY)) {
+        // 1. 基本狀態判定
+        boolean isInsideBoard = (newX >= 0 && newX < model.GRID_SIZE && newY >= 0 && newY < model.GRID_SIZE);
+        boolean isInsideChannel = false;
+        boolean isVictory = false;
+        String exitDir = "";
+
+        // 2. 檢查是否進入或通過隨機開啟的通道 (通道長度設為 3 格)
+        if (!model.exitCells.isEmpty()) {
+            int max = model.GRID_SIZE - 1;
+            int boardEnd = model.GRID_SIZE; // 通常是 10
+
+            // 檢查上方通道
+            if (model.exitCells.contains(new Point(4, 0))) {
+                if ((newX == 4 || newX == 5) && (newY >= -3 && newY <= -1)) {
+                    isInsideChannel = true;
+                } else if ((newX == 4 || newX == 5) && newY == -4) {
+                    isVictory = true; exitDir = "UP";
+                }
+            }
+            // 檢查下方通道
+            else if (model.exitCells.contains(new Point(4, max))) {
+                if ((newX == 4 || newX == 5) && (newY >= boardEnd && newY <= boardEnd + 2)) {
+                    isInsideChannel = true;
+                } else if ((newX == 4 || newX == 5) && newY == boardEnd + 3) {
+                    isVictory = true; exitDir = "DOWN";
+                }
+            }
+            // 檢查左方通道
+            else if (model.exitCells.contains(new Point(0, 4))) {
+                if ((newY == 4 || newY == 5) && (newX >= -3 && newX <= -1)) {
+                    isInsideChannel = true;
+                } else if ((newY == 4 || newY == 5) && newX == -4) {
+                    isVictory = true; exitDir = "LEFT";
+                }
+            }
+            // 檢查右方通道
+            else if (model.exitCells.contains(new Point(max, 4))) {
+                if ((newY == 4 || newY == 5) && (newX >= boardEnd && newX <= boardEnd + 2)) {
+                    isInsideChannel = true;
+                } else if ((newY == 4 || newY == 5) && newX == boardEnd + 3) {
+                    isVictory = true; exitDir = "RIGHT";
+                }
+            }
+        }
+
+        // 3. 觸發通關：將過關方向傳入下一關
+        if (isVictory) {
+            nextLevel(exitDir);
+            return;
+        }
+
+        // 4. 死亡判定：既不在主棋盤內，也不在合法的通道內，或者撞到自己
+        if ((!isInsideBoard && !isInsideChannel) || model.checkCollision(newX, newY)) {
             gameOver();
             return;
         }
 
-        // 新增頭部
+        // 5. 前進移動
         model.snake.add(0, new SnakeNode(newX, newY, "HEAD"));
 
-        // 檢查進食
+        // 6. 吃到道具判定
         Item ateItem = null;
         for (Item item : model.items) {
             if (item.x == newX && item.y == newY) {
@@ -95,31 +123,135 @@ public class GameController extends KeyAdapter {
         if (ateItem != null) {
             ateItem.applyEffect(model, this);
             model.items.remove(ateItem);
+
+            // 判斷是否為紅蘋果，並推進關卡進度
+            if (ateItem instanceof RedApple) {
+                model.fruitsCollectedThisLevel++;
+                if (model.fruitsCollectedThisLevel == model.fruitsRequiredForNextLevel) {
+                    generateLevelExit();
+                }
+            }
         }
 
-        // 維持長度邏輯
+        // 7. 維持身體長度與型別更新
         while (model.snake.size() > model.bodyLength + 2) {
             model.snake.remove(model.snake.size() - 1);
         }
-
-        // 更新節點類型
         for (int i = 1; i < model.snake.size() - 1; i++) model.snake.get(i).type = "BODY";
         if (model.snake.size() > 1) model.snake.get(model.snake.size() - 1).type = "TAIL";
+
+        // 8. 防作弊機制：當開啟新關卡，蛇完全從出生通道走出來後，自動關閉通道
+        if (model.fruitsCollectedThisLevel < model.fruitsRequiredForNextLevel) {
+            boolean allInsideBoard = true;
+            for (SnakeNode node : model.snake) {
+                if (node.x < 0 || node.x >= model.GRID_SIZE || node.y < 0 || node.y >= model.GRID_SIZE) {
+                    allInsideBoard = false;
+                    break;
+                }
+            }
+            if (allInsideBoard && !model.exitCells.isEmpty()) {
+                model.exitCells.clear();
+            }
+        }
 
         panel.repaint();
     }
 
-    // --- 道具效果疊加處理 ---
+    private void generateLevelExit() {
+        model.exitCells.clear();
+        int max = model.GRID_SIZE - 1;
+
+        // 隨機產生 0 到 3 的數字 (0:上, 1:下, 2:左, 3:右)
+        int randomDirection = (int) (Math.random() * 4);
+
+        switch (randomDirection) {
+            case 0: // 上方通道入口
+                model.exitCells.add(new Point(4, 0));
+                model.exitCells.add(new Point(5, 0));
+                break;
+            case 1: // 下方通道入口
+                model.exitCells.add(new Point(4, max));
+                model.exitCells.add(new Point(5, max));
+                break;
+            case 2: // 左方通道入口
+                model.exitCells.add(new Point(0, 4));
+                model.exitCells.add(new Point(0, 5));
+                break;
+            case 3: // 右方通道入口
+                model.exitCells.add(new Point(max, 4));
+                model.exitCells.add(new Point(max, 5));
+                break;
+        }
+    }
+
+    private void nextLevel(String lastExitDir) {
+        model.currentLevel++;
+        model.fruitsCollectedThisLevel = 0;
+
+        // 1. 先把「分數」和「長度」存起來，避免被 reset() 清除
+        int currentScore = model.score;
+        int currentLength = model.bodyLength;
+        model.reset();
+        model.score = currentScore;
+
+        String entranceDir = "";
+        if (lastExitDir.equals("UP")) entranceDir = "DOWN";
+        else if (lastExitDir.equals("DOWN")) entranceDir = "UP";
+        else if (lastExitDir.equals("LEFT")) entranceDir = "RIGHT";
+        else if (lastExitDir.equals("RIGHT")) entranceDir = "LEFT";
+
+        model.snake.clear();
+        int max = model.GRID_SIZE - 1;
+        int boardEnd = model.GRID_SIZE;
+        model.bodyLength = currentLength;
+
+        if (entranceDir.equals("UP")) {
+            dx = 0; dy = 1; nextDx = 0; nextDy = 1;
+            model.snake.add(new SnakeNode(4, -1, "HEAD"));
+            model.snake.add(new SnakeNode(4, -2, "BODY"));
+            model.snake.add(new SnakeNode(4, -3, "BODY"));
+            model.snake.add(new SnakeNode(4, -4, "TAIL"));
+            model.exitCells.add(new Point(4, 0));
+            model.exitCells.add(new Point(5, 0));
+        }
+        else if (entranceDir.equals("DOWN")) {
+            dx = 0; dy = -1; nextDx = 0; nextDy = -1;
+            model.snake.add(new SnakeNode(4, boardEnd, "HEAD"));
+            model.snake.add(new SnakeNode(4, boardEnd + 1, "BODY"));
+            model.snake.add(new SnakeNode(4, boardEnd + 2, "BODY"));
+            model.snake.add(new SnakeNode(4, boardEnd + 3, "TAIL"));
+            model.exitCells.add(new Point(4, max));
+            model.exitCells.add(new Point(5, max));
+        }
+        else if (entranceDir.equals("LEFT")) {
+            dx = 1; dy = 0; nextDx = 1; nextDy = 0;
+            model.snake.add(new SnakeNode(-1, 4, "HEAD"));
+            model.snake.add(new SnakeNode(-2, 4, "BODY"));
+            model.snake.add(new SnakeNode(-3, 4, "BODY"));
+            model.snake.add(new SnakeNode(-4, 4, "TAIL"));
+            model.exitCells.add(new Point(0, 4));
+            model.exitCells.add(new Point(0, 5));
+        }
+        else if (entranceDir.equals("RIGHT")) {
+            dx = -1; dy = 0; nextDx = -1; nextDy = 0;
+            model.snake.add(new SnakeNode(boardEnd, 4, "HEAD"));
+            model.snake.add(new SnakeNode(boardEnd + 1, 4, "BODY"));
+            model.snake.add(new SnakeNode(boardEnd + 2, 4, "BODY"));
+            model.snake.add(new SnakeNode(boardEnd + 3, 4, "TAIL"));
+            model.exitCells.add(new Point(max, 4));
+            model.exitCells.add(new Point(max, 5));
+        }
+
+        spawnItems();
+    }
 
     public void activateStun() {
         stunLayers++;
-        model.isStunned = true; // 1. 當吃到時，把 Model 的暈眩開關打開
-        int currentSession = model.gameSession; // 記錄這顆蘋果是在哪一局被吃掉的
+        model.isStunned = true;
+        int currentSession = model.gameSession;
         Timer t = new Timer(8000, e -> {
-            // 只有「當前遊戲局數」等於「蘋果產生的局數」時，才執行還原
             if (model.gameSession == currentSession && gameTimer.isRunning()) {
                 stunLayers--;
-                // 2. 當層級回到 0，代表 8 秒結束且沒吃到新的，關閉開關
                 if (stunLayers <= 0) model.isStunned = false;
             }
             ((Timer)e.getSource()).stop();
@@ -130,14 +262,13 @@ public class GameController extends KeyAdapter {
 
     public void activateSpeed() {
         speedLayers++;
-        model.isSpeedUp = true; // 1. 當吃到時，把 Model 的加速開關打開
-        int currentSession = model.gameSession; // 記錄這顆蘋果是在哪一局被吃掉的
+        model.isSpeedUp = true;
+        int currentSession = model.gameSession;
         updateSpeed();
 
         Timer t = new Timer(8000, e -> {
             if (model.gameSession == currentSession && gameTimer.isRunning()) {
                 speedLayers--;
-                // 2. 當層級回到 0，關閉開關
                 if (speedLayers <= 0) model.isSpeedUp = false;
                 updateSpeed();
             }
@@ -146,41 +277,36 @@ public class GameController extends KeyAdapter {
         t.setRepeats(false);
         t.start();
     }
+
     private void updateSpeed() {
         int newDelay = (int) (BASE_SPEED / Math.pow(2, speedLayers));
-        gameTimer.setDelay(Math.max(50, newDelay)); // 限制最高速度以免過快
+        gameTimer.setDelay(Math.max(50, newDelay));
     }
 
-    // --- 鍵盤控制 ---
     @Override
     public void keyPressed(KeyEvent e) {
         boolean isStunned = (stunLayers % 2 != 0);
         int key = e.getKeyCode();
-
-        // 先計算出「玩家意圖」產生的方向
-        int intentDx = 0;
-        int intentDy = 0;
+        int intentDx = 0, intentDy = 0;
 
         if (key == KeyEvent.VK_UP)    { intentDx = 0;  intentDy = isStunned ? 1 : -1; }
         else if (key == KeyEvent.VK_DOWN)  { intentDx = 0;  intentDy = isStunned ? -1 : 1; }
         else if (key == KeyEvent.VK_LEFT)  { intentDx = isStunned ? 1 : -1;  intentDy = 0; }
         else if (key == KeyEvent.VK_RIGHT) { intentDx = isStunned ? -1 : 1;  intentDy = 0; }
-        else { return; } // 按到其他鍵不處理
+        else return;
 
-        // 關鍵修復：只有當「轉換後的方向」不是目前的「反方向」時，才允許轉彎
-        // 這樣就算暈眩，蛇也不會瞬間 180 度回頭自殺
         if (intentDx != -dx && intentDy != -dy) {
             nextDx = intentDx;
             nextDy = intentDy;
         }
     }
+
     private void spawnItems() {
         model.items.clear();
         Random r = new Random();
-        while (model.items.size() < 5) {
+        while (model.items.size() < 4) {
             int rx = r.nextInt(model.GRID_SIZE);
             int ry = r.nextInt(model.GRID_SIZE);
-            // 檢查座標是否重疊 (蛇身或其他已生成的道具)
             boolean itemOverlap = false;
             for (Item existingItem : model.items) {
                 if (existingItem.x == rx && existingItem.y == ry) {
@@ -190,11 +316,9 @@ public class GameController extends KeyAdapter {
             }
             if (!model.checkCollision(rx, ry) && !itemOverlap) {
                 int count = model.items.size();
-                // 前 3 顆固定為紅蘋果
                 if (count < 3) {
                     model.items.add(new RedApple(rx, ry));
                 } else {
-                    // 後面 2 顆隨機生成道具
                     int rand = r.nextInt(4);
                     if (rand == 0) model.items.add(new GoldApple(rx, ry));
                     else if (rand == 1) model.items.add(new PoisonApple(rx, ry));
@@ -204,13 +328,12 @@ public class GameController extends KeyAdapter {
             }
         }
     }
+
     private void gameOver() {
         gameTimer.stop();
-        //survivalTimer.stop();
-        itemRefreshTimer.stop(); // 停止
+        itemRefreshTimer.stop();
         model.updateHighScore();
         javax.swing.JOptionPane.showMessageDialog(panel, "遊戲結束！總分: " + model.score);
         startGame();
-
     }
 }

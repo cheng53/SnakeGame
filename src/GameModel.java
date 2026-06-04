@@ -1,3 +1,4 @@
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,11 +11,18 @@ public class GameModel {
     public boolean isStunned = false;
     public boolean isSpeedUp = false;
     public int gameSession = 0; // 每次開始新遊戲就 +1
+
     // 蛇的資料：List 的第 0 個是頭，最後一個是尾
     public List<SnakeNode> snake = new ArrayList<>();
-
     // 道具清單
     public List<Item> items = new ArrayList<>();
+
+    // --- 新增：關卡與通道控制變數 ---
+    public int currentLevel = 1;
+    public int fruitsCollectedThisLevel = 0;
+    public int fruitsRequiredForNextLevel = 3;
+    public List<Point> exitCells = new ArrayList<>();
+    // --------------------------------
 
     public GameModel() {
         reset();
@@ -24,8 +32,11 @@ public class GameModel {
     public void reset() {
         score = 0;
         bodyLength = 2;
+        currentLevel = 1;
+        fruitsCollectedThisLevel = 0;
         snake.clear();
         items.clear();
+        exitCells.clear(); // 每次重置遊戲狀態時，確保通道也會被完全清空
 
         // 初始位置：頭在 (5,5)，身體在下方
         snake.add(new SnakeNode(5, 5, "HEAD"));
@@ -46,7 +57,6 @@ public class GameModel {
     public void updateHighScore() {
         if (score > highScore) {
             highScore = score;
-
         }
     }
 }

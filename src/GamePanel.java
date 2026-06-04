@@ -1,27 +1,26 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.geom.AffineTransform; // 用於旋轉蛇頭圖片
+import java.awt.geom.AffineTransform;
 import java.io.File;
 import javax.imageio.ImageIO;
 
 public class GamePanel extends JPanel {
     private GameModel model;
     public Image redImg, goldImg, poisonImg, stunImg, speedImg, trophyImg;
-    private Image gameFrameImage; // 遊戲的植物外框圖片
-    private Image snakeHeadImg;    // 藍色精緻蛇頭圖片
-    private Image snakeBodyImg;    // 藍色鱗片蛇身圖片
+    private Image gameFrameImage;
+    private Image snakeHeadImg;
+    private Image snakeBodyImg;
 
-    // 💡 保持你目前使用的 TILE_SIZE = 36
     public final int TILE_SIZE = 36;
     private final int GRID_COUNT;
     private final int HEADER_HEIGHT = 80;
 
     public GamePanel(GameModel model) {
         this.model = model;
-        this.GRID_COUNT = model.GRID_SIZE; // 已對齊你的大寫變數
+        this.GRID_COUNT = model.GRID_SIZE;
 
         setPreferredSize(new Dimension(TILE_SIZE * GRID_COUNT, TILE_SIZE * GRID_COUNT + HEADER_HEIGHT));
-        setBackground(new Color(116, 190, 63)); // 改用草綠色底色
+        setBackground(new Color(116, 190, 63));
 
         loadImages();
     }
@@ -30,9 +29,9 @@ public class GamePanel extends JPanel {
         try {
             redImg = ImageIO.read(new File("resources/red_apple.png"));
             goldImg = ImageIO.read(new File("resources/gold_apple.png"));
-            poisonImg = ImageIO.read(new File("resources/poison_apple.png"));
-            stunImg = ImageIO.read(new File("resources/stun_apple.png"));
-            speedImg = ImageIO.read(new File("resources/speed_apple.png"));
+            poisonImg = ImageIO.read(new File("resources/blue_apple.png"));
+            stunImg = poisonImg;
+            speedImg = goldImg;
             trophyImg = ImageIO.read(new File("resources/trophy.png"));
             gameFrameImage = ImageIO.read(new File("resources/game_frame.png"));
             snakeHeadImg = ImageIO.read(new File("resources/snake_head.png"));
@@ -55,24 +54,18 @@ public class GamePanel extends JPanel {
         int gameWidth = TILE_SIZE * GRID_COUNT;
         int gameHeight = TILE_SIZE * GRID_COUNT;
 
-        // 計算棋盤在畫面上的實際偏移位置
         int offsetX = (panelWidth - gameWidth) / 2;
         int offsetY = HEADER_HEIGHT + (panelHeight - HEADER_HEIGHT - gameHeight) / 2;
 
-        // ==========================================
-        // 【圖層 1：最底層】先繪製草叢外框圖片
-        // ==========================================
+        // 【圖層 1：最底層】繪製草叢外框圖片
         if (gameFrameImage != null) {
             g2d.drawImage(gameFrameImage, 0, HEADER_HEIGHT, panelWidth, panelHeight - HEADER_HEIGHT, null);
         }
 
-        // 切換坐標系到棋盤起點，準備繪製遊戲主體
         g2d.translate(offsetX, offsetY);
 
-        // ==========================================
         // 【圖層 2：中層】繪製不透明的綠色棋盤
-        // ==========================================
-        g2d.setColor(new Color(162, 209, 73)); // 使用棋盤的深綠色
+        g2d.setColor(new Color(162, 209, 73));
         g2d.fillRect(-4, -4, gameWidth + 8, gameHeight + 8);
         for (int row = 0; row < GRID_COUNT; row++) {
             for (int col = 0; col < GRID_COUNT; col++) {
@@ -81,14 +74,31 @@ public class GamePanel extends JPanel {
             }
         }
 
-        // ==========================================
+        // 【圖層 2.5：通道層】畫在網格之上、蛇的下方
+        if (!model.exitCells.isEmpty()) {
+            g2d.setColor(Color.YELLOW);
+            int boardSize = GRID_COUNT * TILE_SIZE;
+            int max = GRID_COUNT - 1;
+
+            if (model.exitCells.contains(new Point(4, 0))) {
+                g2d.fillRect(4 * TILE_SIZE, -3 * TILE_SIZE, 2 * TILE_SIZE, 3 * TILE_SIZE);
+            }
+            if (model.exitCells.contains(new Point(4, max))) {
+                g2d.fillRect(4 * TILE_SIZE, boardSize, 2 * TILE_SIZE, 3 * TILE_SIZE);
+            }
+            if (model.exitCells.contains(new Point(0, 4))) {
+                g2d.fillRect(-3 * TILE_SIZE, 4 * TILE_SIZE, 3 * TILE_SIZE, 2 * TILE_SIZE);
+            }
+            if (model.exitCells.contains(new Point(max, 4))) {
+                g2d.fillRect(boardSize, 4 * TILE_SIZE, 3 * TILE_SIZE, 2 * TILE_SIZE);
+            }
+        }
+
         // 【圖層 3：遊戲物件層】繪製蛇與道具
-        // ==========================================
         for (int i = 0; i < model.snake.size(); i++) {
             SnakeNode node = model.snake.get(i);
 
             if (node.type.equals("HEAD")) {
-                // 🐍 蛇頭繪製邏輯：保持旋轉與放大
                 if (snakeHeadImg != null) {
                     AffineTransform oldTransform = g2d.getTransform();
 
@@ -97,7 +107,6 @@ public class GamePanel extends JPanel {
                     g2d.translate(centerX, centerY);
 
                     double angle = 0;
-
                     if (model.snake.size() > 1) {
                         SnakeNode nextNode = model.snake.get(1);
                         int dx = node.x - nextNode.x;
@@ -112,70 +121,47 @@ public class GamePanel extends JPanel {
 
                     int headSize = TILE_SIZE + 6;
                     g2d.drawImage(snakeHeadImg, -headSize / 2, -headSize / 2, headSize, headSize, null);
-
                     g2d.setTransform(oldTransform);
                 } else {
                     g2d.setColor(new Color(0, 102, 204));
                     g2d.fillOval(node.x * TILE_SIZE + 2, node.y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
                 }
             } else {
-                // 🟢 【方案 A：圓角圖片版—幾何等比例漸細圓角正方形】
                 if (snakeBodyImg != null) {
-                    // 1. 完全沿用你原本最棒的幾何漸細與置中數學公式
                     int shrink = Math.min(i * 1, 24);
-                    int currentSize = TILE_SIZE - 6 - shrink; // 💡 稍微再內縮一點點，讓身體更精緻
-                    int offset = 3 + (shrink / 2);            // 💡 相應微調置中偏移量
+                    int currentSize = TILE_SIZE - 6 - shrink;
+                    int offset = 3 + (shrink / 2);
 
                     int posX = node.x * TILE_SIZE + offset;
                     int posY = node.y * TILE_SIZE + offset;
 
-                    // 2. 備份目前的剪裁區域
                     java.awt.Shape oldClip = g2d.getClip();
-
-                    // 3. 創建一個與身體大小相同的圓角矩形遮罩 (圓角半徑設為 12)
                     g2d.setClip(new java.awt.geom.RoundRectangle2D.Float(posX, posY, currentSize, currentSize, 12, 12));
-
-                    // 4. 在圓角遮罩內繪製這張鱗片圖片
                     g2d.drawImage(snakeBodyImg, posX, posY, currentSize, currentSize, null);
-
-                    // 5. 還原剪裁區域，避免影響後續繪製
                     g2d.setClip(oldClip);
                 } else {
-                    // 備用方案：圖片載入失敗時畫原本的漸層綠色方塊
                     int gradient = Math.min(255, 150 + (i * 5));
                     g2d.setColor(new Color(51, 153, gradient));
-
                     int shrink = Math.min(i * 2, 24);
                     int currentSize = TILE_SIZE - 4 - shrink;
                     int offset = 2 + (shrink / 2);
 
-                    g2d.fillRoundRect(
-                            node.x * TILE_SIZE + offset,
-                            node.y * TILE_SIZE + offset,
-                            currentSize,
-                            currentSize,
-                            15, 15
-                    );
+                    g2d.fillRoundRect(node.x * TILE_SIZE + offset, node.y * TILE_SIZE + offset, currentSize, currentSize, 15, 15);
                 }
             }
-        } // 完美閉合畫蛇的 for 迴圈
+        }
 
-        // 畫道具
         for (Item item : model.items) {
             item.draw(g2d, TILE_SIZE, this);
         }
 
-        // 復原坐標系偏移
         g2d.translate(-offsetX, -offsetY);
 
-        // ==========================================
-        // 【圖層 4：最頂層】Header 計分區（💡 已修正中文字型，消滅方塊亂碼）
-        // ==========================================
+        // 【圖層 4：最頂層】Header 計分區
         g2d.setColor(new Color(74, 117, 44));
         g2d.fillRect(0, 0, panelWidth, HEADER_HEIGHT);
         g2d.setColor(Color.WHITE);
 
-        // 將字型改為微軟正黑體，確保英文字 Score 和中文字狀態都能完美顯示
         g2d.setFont(new Font("Microsoft JhengHei", Font.BOLD, 24));
         g2d.drawString("SCORE: " + model.score, 20, 52);
 

@@ -43,6 +43,7 @@ public class GameController extends KeyAdapter {
         gameTimer.setDelay(BASE_SPEED);
         gameTimer.start();
         itemRefreshTimer.start();
+        spawnObstacles(); // ✨ 加入這行：先生成障礙物
         spawnItems();
     }
 
@@ -102,8 +103,10 @@ public class GameController extends KeyAdapter {
             return;
         }
 
-        // 4. 死亡判定：既不在主棋盤內，也不在合法的通道內，或者撞到自己
-        if ((!isInsideBoard && !isInsideChannel) || model.checkCollision(newX, newY)) {
+        // 4. 死亡判定：既不在主棋盤內，也不在合法的通道內，或者撞到自己，或是 ✨撞到障礙物✨
+        if ((!isInsideBoard && !isInsideChannel) ||
+                model.checkCollision(newX, newY) ||
+                model.obstacles.contains(new Point(newX, newY))) { // ✨ 新增障礙物碰撞
             gameOver();
             return;
         }
@@ -242,6 +245,7 @@ public class GameController extends KeyAdapter {
             model.exitCells.add(new Point(max, 5));
         }
 
+        spawnObstacles(); // ✨ 加入這行：換關時重新洗牌障礙物
         spawnItems();
     }
 
@@ -301,22 +305,55 @@ public class GameController extends KeyAdapter {
         }
     }
 
+    // ✨ 新增：隨機生成障礙物的方法
+    private void spawnObstacles() {
+        model.obstacles.clear();
+        Random r = new Random();
+        // 障礙物數量隨關卡增加 (每關多 2 顆，最多不超過 15 顆以免沒路走)
+        int numObstacles = Math.min(model.currentLevel * 2, 15);
+
+        while (model.obstacles.size() < numObstacles) {
+            int rx = r.nextInt(model.GRID_SIZE);
+            int ry = r.nextInt(model.GRID_SIZE);
+            Point p = new Point(rx, ry);
+
+            boolean overlapSnake = model.checkCollision(rx, ry);
+            boolean overlapObstacle = model.obstacles.contains(p);
+
+            // 💡 核心設計：避開中央的「十字公路」(x=4,5 和 y=4,5)
+            // 這樣可以保證通道出入口和蛇的出生點絕對安全
+            boolean isCrossHighway = (rx == 4 || rx == 5 || ry == 4 || ry == 5);
+
+            if (!overlapSnake && !overlapObstacle && !isCrossHighway) {
+                model.obstacles.add(p);
+            }
+        }
+    }
+
+    // 更新道具生成 (加入防障礙物重疊)
     private void spawnItems() {
         model.items.clear();
         Random r = new Random();
-        while (model.items.size() < 4) {
+        int redAppleTarget = 3 + (model.currentLevel - 1);
+        int totalAppleTarget = redAppleTarget + 2;
+
+        while (model.items.size() < totalAppleTarget) {
             int rx = r.nextInt(model.GRID_SIZE);
             int ry = r.nextInt(model.GRID_SIZE);
+
             boolean itemOverlap = false;
             for (Item existingItem : model.items) {
                 if (existingItem.x == rx && existingItem.y == ry) {
-                    itemOverlap = true;
-                    break;
+                    itemOverlap = true; break;
                 }
             }
-            if (!model.checkCollision(rx, ry) && !itemOverlap) {
+
+            // ✨ 檢查是否跟障礙物重疊
+            boolean obstacleOverlap = model.obstacles.contains(new Point(rx, ry));
+
+            if (!model.checkCollision(rx, ry) && !itemOverlap && !obstacleOverlap) {
                 int count = model.items.size();
-                if (count < 3) {
+                if (count < redAppleTarget) {
                     model.items.add(new RedApple(rx, ry));
                 } else {
                     int rand = r.nextInt(4);
@@ -328,6 +365,7 @@ public class GameController extends KeyAdapter {
             }
         }
     }
+
 
     private void gameOver() {
         gameTimer.stop();

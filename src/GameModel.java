@@ -12,6 +12,9 @@ public class GameModel {
     public boolean isSpeedUp = false;
     public int gameSession = 0; // 每次開始新遊戲就 +1
 
+    // ✨ 新增：儲存障礙物的清單
+    public List<Point> obstacles = new ArrayList<>();
+
     // 蛇的資料：List 的第 0 個是頭，最後一個是尾
     public List<SnakeNode> snake = new ArrayList<>();
     // 道具清單
@@ -37,6 +40,7 @@ public class GameModel {
         snake.clear();
         items.clear();
         exitCells.clear(); // 每次重置遊戲狀態時，確保通道也會被完全清空
+        obstacles.clear();
 
         // 初始位置：頭在 (5,5)，身體在下方
         snake.add(new SnakeNode(5, 5, "HEAD"));

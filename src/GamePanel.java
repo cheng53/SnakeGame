@@ -11,6 +11,7 @@ public class GamePanel extends JPanel {
     private Image snakeHeadImg;
     private Image snakeBodyImg;
     private Image gateImg; // ✨ 新增：通道/閘門圖片
+    private Image rockImg;
 
     public final int TILE_SIZE = 36;
     private final int GRID_COUNT;
@@ -29,14 +30,15 @@ public class GamePanel extends JPanel {
     private void loadImages() {
         try {
             redImg = ImageIO.read(new File("resources/red_apple.png"));
-            goldImg = ImageIO.read(new File("resources/gold_apple.png"));
-            poisonImg = ImageIO.read(new File("resources/blue_apple.png"));
+            goldImg = ImageIO.read(new File("resources/blue_apple.png"));
+            poisonImg = ImageIO.read(new File("resources/purple.png"));
             stunImg = poisonImg;
             speedImg = goldImg;
             trophyImg = ImageIO.read(new File("resources/trophy.png"));
             gameFrameImage = ImageIO.read(new File("resources/game_frame.png"));
             snakeHeadImg = ImageIO.read(new File("resources/snake_head.png"));
             snakeBodyImg = ImageIO.read(new File("resources/snake_body.png"));
+            rockImg = ImageIO.read(new File("resources/rock.png")); // ✨ 讀取障礙物圖片
 
             // ✨ 載入新的通道圖片
             gateImg = ImageIO.read(new File("resources/gate.png"));
@@ -77,30 +79,55 @@ public class GamePanel extends JPanel {
                 g2d.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
         }
+        // ✨ 【圖層 2.2：障礙物層】畫在綠色草地上
+        for (Point p : model.obstacles) {
+            if (rockImg != null) {
+                // 1. 算出這個格子的「絕對中心點座標」
+                int centerX = p.x * TILE_SIZE + (TILE_SIZE / 2);
+                int centerY = p.y * TILE_SIZE + (TILE_SIZE / 2);
 
-        // 【圖層 2.5：通道層】畫在網格之上、蛇的下方
+                // 2. 決定石頭要畫多大 (這裡設定為格子的 1.25 倍大，以覆蓋透明邊界)
+                // 你可以隨意修改 1.25 這個數字，中心點都不會跑掉
+                int drawSize = (int)(TILE_SIZE * 1.5);
+
+                // 3. 根據中心點，往左上方推算圖片的繪製起點
+                int drawX = centerX - (drawSize / 2);
+                int drawY = centerY - (drawSize / 2);
+
+                g2d.drawImage(rockImg, drawX, drawY, drawSize, drawSize, null);
+            } else {
+                // 如果沒有圖片，畫一個完全填滿整格的深灰色方塊代替
+                g2d.setColor(Color.DARK_GRAY);
+                g2d.fillRoundRect(p.x * TILE_SIZE, p.y * TILE_SIZE, TILE_SIZE, TILE_SIZE, 8, 8);
+            }
+        }
+
+        // ✨ 【圖層 2.5：通道層】畫在網格之上、蛇的下方
         if (!model.exitCells.isEmpty()) {
             int boardSize = GRID_COUNT * TILE_SIZE;
             int max = GRID_COUNT - 1;
 
-            // 視覺長度稍微拉長到 4 格，讓橋能完美穿過邊框草叢延伸出畫面
             int bridgeLength = 4 * TILE_SIZE;
 
+            // 💡 關鍵修正：圖片兩側自帶透明留白會產生縫隙。
+            // 我們設定一個 overlap (重疊值)，讓橋向棋盤內部多延伸一點，完美吃掉那個留白！
+            int overlap = 22; // 這裡設定約半格多一點，你可以微調這個數字直到完美銜接
+
             if (model.exitCells.contains(new Point(4, 0))) {
-                // 上方通道 (直向)
-                drawGate(g2d, 4 * TILE_SIZE, -bridgeLength, 2 * TILE_SIZE, bridgeLength, true);
+                // 上方通道：長度往下多加 overlap
+                drawGate(g2d, 4 * TILE_SIZE, -bridgeLength, 2 * TILE_SIZE, bridgeLength + overlap, true);
             }
             if (model.exitCells.contains(new Point(4, max))) {
-                // 下方通道 (直向)
-                drawGate(g2d, 4 * TILE_SIZE, boardSize, 2 * TILE_SIZE, bridgeLength, true);
+                // 下方通道：起點往上拉 overlap，同時長度加上 overlap
+                drawGate(g2d, 4 * TILE_SIZE, boardSize - overlap, 2 * TILE_SIZE, bridgeLength + overlap, true);
             }
             if (model.exitCells.contains(new Point(0, 4))) {
-                // 左方通道 (橫向)
-                drawGate(g2d, -bridgeLength, 4 * TILE_SIZE, bridgeLength, 2 * TILE_SIZE, false);
+                // 左方通道：長度往右多加 overlap
+                drawGate(g2d, -bridgeLength, 4 * TILE_SIZE, bridgeLength + overlap, 2 * TILE_SIZE, false);
             }
             if (model.exitCells.contains(new Point(max, 4))) {
-                // 右方通道 (橫向)
-                drawGate(g2d, boardSize, 4 * TILE_SIZE, bridgeLength, 2 * TILE_SIZE, false);
+                // 右方通道：起點往左拉 overlap，同時長度加上 overlap
+                drawGate(g2d, boardSize - overlap, 4 * TILE_SIZE, bridgeLength + overlap, 2 * TILE_SIZE, false);
             }
         }
 

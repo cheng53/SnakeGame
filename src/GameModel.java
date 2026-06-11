@@ -1,50 +1,51 @@
 import java.awt.Point;
+import java.io.*; // ✨ 匯入 File I/O 函式庫
 import java.util.ArrayList;
 import java.util.List;
 
 public class GameModel {
     // 遊戲參數
-    public final int GRID_SIZE = 10; // 10*10 的格子
+    public final int GRID_SIZE = 10;
     public int score = 0;
     public int highScore = 0;
-    public int bodyLength = 2; // 初始身體長度 (不含頭尾)
+    public int bodyLength = 2;
     public boolean isStunned = false;
     public boolean isSpeedUp = false;
-    public boolean isPaused = false; // ✨ 新增：記錄遊戲是否處於暫停狀態
-    public boolean isRespawning = false; // ✨ 新增：記錄是否在重生緩衝狀態
-    public int respawnTimer = 0;         // ✨ 新增：重生倒數秒數
+    public boolean isPaused = false;
+    public boolean isRespawning = false;
+    public int respawnTimer = 0;
 
+    // 無敵狀態控制變數
+    public boolean hasShield = false;
+    public int shieldTimer = 0;
 
-    // ✨ 新增：無敵狀態控制變數
-    public boolean hasShield = false; // 是否持有護盾
-    public int shieldTimer = 0;       // 護盾剩餘時間
+    public String currentEntranceDir = "CENTER";
+    public int gameSession = 0;
 
-    public String currentEntranceDir = "CENTER"; // 記錄本關蛇是從哪裡出生的，死掉時才能回到對應的起點
-
-    public int gameSession = 0; // 每次開始新遊戲就 +1
-
-    // ✨ 新增：儲存障礙物的清單
+    // 儲存障礙物的清單
     public List<Point> obstacles = new ArrayList<>();
-
-    // 蛇的資料：List 的第 0 個是頭，最後一個是尾
+    // 蛇的資料
     public List<SnakeNode> snake = new ArrayList<>();
     // 道具清單
     public List<Item> items = new ArrayList<>();
 
-    // --- 新增：關卡與通道控制變數 ---
+    // 關卡與通道控制變數
     public int currentLevel = 1;
     public int fruitsCollectedThisLevel = 0;
     public int fruitsRequiredForNextLevel = 3;
     public List<Point> exitCells = new ArrayList<>();
-    // --------------------------------
+
+    // ✨ 新增：儲存歷史前 5 名紀錄的清單與存檔路徑
+    public List<Integer> leaderboard = new ArrayList<>();
+    private final String SAVE_PATH = "resources/save.txt";
 
     public GameModel() {
+        loadHighScore(); // ✨ 啟動時載入歷史排行榜
         reset();
     }
 
     // 初始化或重新開始遊戲
     public void reset() {
-        // ✨ 注意：這裡不要清空 score，因為 nextLevel 呼叫 reset 時分數不能少
         bodyLength = 2;
         currentLevel = 1;
         fruitsCollectedThisLevel = 0;
@@ -53,17 +54,15 @@ public class GameModel {
         exitCells.clear();
         obstacles.clear();
 
-        isPaused = false; // ✨ 每次重置遊戲時，確保不會一開始就卡在暫停
-        isRespawning = false; // ✨ 每次重置確保解除重生緩衝
-        respawnTimer = 0;     // ✨ 歸零倒數計時
+        isPaused = false;
+        isRespawning = false;
+        respawnTimer = 0;
 
-        // ✨ 重置無敵狀態
         hasShield = false;
         shieldTimer = 0;
 
-        currentEntranceDir = "CENTER"; // 第一關預設在中央
+        currentEntranceDir = "CENTER";
 
-        // 初始位置：頭在 (5,5)
         snake.add(new SnakeNode(5, 5, "HEAD"));
         snake.add(new SnakeNode(5, 6, "BODY"));
         snake.add(new SnakeNode(5, 7, "BODY"));
@@ -77,9 +76,78 @@ public class GameModel {
         return false;
     }
 
+    // 儲存障礙物的清單
+    public List<Point> obstacles = new ArrayList<>();
+
+    // ✨ 新增：特殊地形清單
+    public List<Point> iceCells = new ArrayList<>();
+    public List<Point> swampCells = new ArrayList<>();
+
+    // ✨ 修改：更新最高分與排行榜機制
     public void updateHighScore() {
-        if (score > highScore) {
-            highScore = score;
+        // 1. 將這一局的分數放入排行榜
+        leaderboard.add(score);
+
+        // 2. 由大到小排序 (降序)
+        leaderboard.sort((a, b) -> b - a);
+
+        // 3. 嚴格限制只保留前 5 名
+        while (leaderboard.size() > 5) {
+            leaderboard.remove(leaderboard.size() - 1);
+        }
+
+        // 4. 同步更新即時看板上的最高紀錄 (第 0 個就是第一名)
+        highScore = leaderboard.get(0);
+
+        // 5. 寫入檔案永久保存
+        saveHighScore();
+    }
+
+    // 📥 ✨ 新增：從檔案讀取多行分數
+    private void loadHighScore() {
+        File saveFile = new File(SAVE_PATH);
+        leaderboard.clear();
+
+        if (!saveFile.exists()) {
+            highScore = 0;
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(saveFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.trim().isEmpty()) {
+                    leaderboard.add(Integer.parseInt(line.trim()));
+                }
+            }
+            // 排序並過濾，確保資料無誤
+            leaderboard.sort((a, b) -> b - a);
+            while (leaderboard.size() > 5) {
+                leaderboard.remove(leaderboard.size() - 1);
+            }
+
+            highScore = leaderboard.isEmpty() ? 0 : leaderboard.get(0);
+        } catch (IOException | NumberFormatException e) {
+            System.out.println("提示：讀取排行榜失敗，將重置。原因: " + e.getMessage());
+            highScore = 0;
+        }
+    }
+
+    // 📤 ✨ 新增：將前 5 名依序寫入檔案
+    private void saveHighScore() {
+        File saveFile = new File(SAVE_PATH);
+        File dir = saveFile.getParentFile();
+        if (dir != null && !dir.exists()) {
+            dir.mkdirs();
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(saveFile))) {
+            for (int s : leaderboard) {
+                writer.write(s + "\n");
+            }
+            writer.flush();
+        } catch (IOException e) {
+            System.out.println("警告：儲存排行榜失敗！原因: " + e.getMessage());
         }
     }
 }

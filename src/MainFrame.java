@@ -45,4 +45,8 @@ public class MainFrame extends JFrame {
         // 啟動程式
         SwingUtilities.invokeLater(() -> new MainFrame());
     }
+    // ✨ 新增：提供一個方法讓 MenuPanel 可以獲取資料模型以讀取排行榜
+    public GameModel getGameModel() {
+        return model;
+    }
 }

@@ -11,6 +11,8 @@ public class GameModel {
     public boolean isStunned = false;
     public boolean isSpeedUp = false;
     public boolean isPaused = false; // ✨ 新增：記錄遊戲是否處於暫停狀態
+    public boolean isRespawning = false; // ✨ 新增：記錄是否在重生緩衝狀態
+    public int respawnTimer = 0;         // ✨ 新增：重生倒數秒數
 
 
     // ✨ 新增：無敵狀態控制變數
@@ -50,8 +52,10 @@ public class GameModel {
         items.clear();
         exitCells.clear();
         obstacles.clear();
-        isPaused = false; // ✨ 每次重置遊戲時，確保不會一開始就卡在暫停
 
+        isPaused = false; // ✨ 每次重置遊戲時，確保不會一開始就卡在暫停
+        isRespawning = false; // ✨ 每次重置確保解除重生緩衝
+        respawnTimer = 0;     // ✨ 歸零倒數計時
 
         // ✨ 重置無敵狀態
         hasShield = false;

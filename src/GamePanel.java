@@ -73,12 +73,17 @@ public class GamePanel extends JPanel {
 
         g2d.translate(offsetX, offsetY);
 
-        // 【圖層 2：中層】繪製不透明的綠色棋盤
-        g2d.setColor(new Color(162, 209, 73));
+        // ==========================================
+        // 【圖層 2：中層】繪製半透明的棋盤
+        // ==========================================
+        // 1. 底框改為半透明 (第四個參數 120 代表大約 50% 的透明度)
+        g2d.setColor(new Color(96, 144, 44, 120));
         g2d.fillRect(-4, -4, gameWidth + 8, gameHeight + 8);
+
         for (int row = 0; row < GRID_COUNT; row++) {
             for (int col = 0; col < GRID_COUNT; col++) {
-                g2d.setColor((row + col) % 2 == 0 ? new Color(170, 215, 81) : new Color(162, 209, 73));
+                // 2. 棋盤格子也加上透明度 (這裡設為 80，讓它比底框更透一點)
+                g2d.setColor((row + col) % 2 == 0 ? new Color(132, 178, 65, 80) : new Color(121, 166, 56, 80));
                 g2d.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
         }
@@ -102,8 +107,8 @@ public class GamePanel extends JPanel {
         if (!model.exitCells.isEmpty()) {
             int boardSize = GRID_COUNT * TILE_SIZE;
             int max = GRID_COUNT - 1;
-            int bridgeLength = 4 * TILE_SIZE;
-            int overlap = 22;
+            int bridgeLength = 5 * TILE_SIZE;
+            int overlap = 40;
 
             if (model.exitCells.contains(new Point(4, 0))) {
                 drawGate(g2d, 4 * TILE_SIZE, -bridgeLength, 2 * TILE_SIZE, bridgeLength + overlap, true);
@@ -189,17 +194,23 @@ public class GamePanel extends JPanel {
         g2d.setColor(Color.WHITE);
 
         g2d.setFont(new Font("Microsoft JhengHei", Font.BOLD, 24));
-        g2d.drawString("SCORE: " + model.score, 20, 52);
+        g2d.drawString("第" + model.score + "層", 20, 52);
 
-        // ✨ 護盾狀態優先顯示
-        if (model.isPaused) {
+        // ✨ 優先顯示重生緩衝狀態
+        if (model.isRespawning) {
+            g2d.setColor(Color.ORANGE);
+            g2d.drawString("重生中... " + model.respawnTimer, 200, 52);
+        }
+        else if (model.isPaused) {
             g2d.setColor(Color.ORANGE);
             g2d.drawString("遊戲暫停中", 200, 52);
-        } else if (model.hasShield) { // 原本的護盾邏輯移到 else if
+        }
+        else if (model.hasShield) {
             g2d.setColor(Color.YELLOW);
             g2d.drawString("護盾中 (" + model.shieldTimer + "s)", 200, 52);
-        } else {
-            // 沒有護盾與暫停時，才顯示常規的加速與暈眩狀態
+        }
+        else {
+            // 沒有重生、沒有護盾、也沒有暫停時，才顯示常規的加速與暈眩狀態
             if (model.isSpeedUp) {
                 g2d.setColor(Color.CYAN);
                 g2d.drawString("加速中", 200, 52);

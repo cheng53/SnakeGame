@@ -8,6 +8,9 @@ public class GameController extends KeyAdapter {
     private GameModel model;
     private GamePanel panel;
 
+    // ✨ 新增音效管理器
+    private SoundManager soundManager = new SoundManager();
+
     private Timer gameTimer;
     private Timer itemRefreshTimer;
     private int stunLayers = 0;
@@ -26,11 +29,16 @@ public class GameController extends KeyAdapter {
             spawnItems();
             panel.repaint();
         });
+        // ✨ 新增：在建構子一初始化就播放背景音樂，這樣選單畫面就會有音樂了！
+        soundManager.playBGM("resources/bgm.wav");
     }
 
     public void startGame() {
         gameTimer.stop();
         itemRefreshTimer.stop();
+
+        // ✨ 新增：遊戲開始時播放 BGM
+        soundManager.playBGM("resources/bgm.wav");
 
         // 💡 關鍵修正：當彻底開新一局遊戲時，強制將關卡與分數初始化歸零
         model.gameSession++;
@@ -132,6 +140,9 @@ public class GameController extends KeyAdapter {
         }
 
         if (ateItem != null) {
+            // ✨ 第二個數字 1000 代表：從那個點開始，只播 1000 毫秒 (1秒) 就切斷
+            soundManager.playSoundWithOffsetAndTimeLimit("resources/eat.wav", 500, 1000);
+
             ateItem.applyEffect(model, this);
             model.items.remove(ateItem);
 
@@ -256,13 +267,21 @@ public class GameController extends KeyAdapter {
         spawnItems();
     }
 
-
     private void respawnSnake() {
         model.bodyLength = 2; // 重置回原始長度
         model.snake.clear();
 
-        // 💡 關鍵修正：不論目前關卡從哪出生，破盾重生一律強制回到棋盤正中央 (5, 5)
-        // 同時將移動方向預設改為朝上 (dx=0, dy=-1)，給玩家最直覺的反應時間
+        // ✨ 1. 精準斷開舊狀態：讓 session +1，所有還在跑的暈眩/加速計時器就會自動失效
+        model.gameSession++;
+
+        // ✨ 2. 清除所有 Buff 與 Debuff 的狀態旗標與層數
+        model.isStunned = false;
+        model.isSpeedUp = false;
+        stunLayers = 0;
+        speedLayers = 0;
+        updateSpeed(); // 確保移動延遲恢復到正常值 BASE_SPEED
+
+        // 確保重生時預設方向朝上，給玩家直覺反應空間
         dx = 0; dy = -1;
         nextDx = 0; nextDy = -1;
 
@@ -270,6 +289,29 @@ public class GameController extends KeyAdapter {
         model.snake.add(new SnakeNode(5, 6, "BODY"));
         model.snake.add(new SnakeNode(5, 7, "BODY"));
         model.snake.add(new SnakeNode(5, 8, "TAIL"));
+
+        // ✨ 3. 觸發重生緩衝與倒數計時器
+        model.isRespawning = true;
+        model.respawnTimer = 3; // 倒數 3 秒
+        gameTimer.stop();
+        itemRefreshTimer.stop();
+
+        // 建立一個每 1 秒跳一次的計時器來處理倒數
+        javax.swing.Timer bufferTimer = new javax.swing.Timer(1000, e -> {
+            model.respawnTimer--;
+            if (model.respawnTimer <= 0) {
+                model.isRespawning = false; // 緩衝結束
+
+                // 若這段期間玩家沒有手動按下 P 鍵暫停，才恢復遊戲運行
+                if (!model.isPaused) {
+                    gameTimer.start();
+                    itemRefreshTimer.start();
+                }
+                ((javax.swing.Timer)e.getSource()).stop(); // 關閉此倒數計時器
+            }
+            panel.repaint(); // 每秒刷新畫面以更新倒數數字
+        });
+        bufferTimer.start();
 
         panel.repaint();
     }
@@ -354,21 +396,22 @@ public class GameController extends KeyAdapter {
 
         // ✨ 新增：按下 P 鍵切換暫停狀態
         if (key == KeyEvent.VK_P) {
-            model.isPaused = !model.isPaused;
+            if (model.isRespawning) return; // 💡 防呆：重生倒數期間不允許操作手動暫停
 
+            model.isPaused = !model.isPaused;
             if (model.isPaused) {
-                gameTimer.stop();          // 暫停蛇的移動
-                itemRefreshTimer.stop();   // 暫停道具刷新
+                gameTimer.stop();
+                itemRefreshTimer.stop();
             } else {
-                gameTimer.start();         // 恢復蛇的移動
-                itemRefreshTimer.start();  // 恢復道具刷新
+                gameTimer.start();
+                itemRefreshTimer.start();
             }
-            panel.repaint(); // 立刻刷新畫面顯示「暫停中」字樣
-            return;          // 暫停事件處理完畢，直接結束此方法
+            panel.repaint();
+            return;
         }
 
-        // 💡 如果目前是暫停狀態，不允許玩家透過方向鍵改變蛇的下一格前進方向
-        if (model.isPaused) return;
+        // 💡 防呆：如果目前是暫停狀態或重生倒數中，鎖死方向鍵，不允許改變蛇的前進方向
+        if (model.isPaused || model.isRespawning) return;
 
         boolean isStunned = (stunLayers % 2 != 0);
         int intentDx = 0, intentDy = 0;
@@ -464,8 +507,12 @@ public class GameController extends KeyAdapter {
         itemRefreshTimer.stop();
         model.updateHighScore();
 
+        // ✨ 新增：停止背景音樂，播放死亡音效
+        soundManager.stopBGM();
+        soundManager.playSound("resources/die.wav");
+
         // 💡 關鍵修正：建立一個 JLabel，並設定成超大、加粗的微軟正黑體
-        javax.swing.JLabel messageLabel = new javax.swing.JLabel("遊戲結束！總分: " + model.score);
+        javax.swing.JLabel messageLabel = new javax.swing.JLabel("遊戲結束！關卡進度: " + model.score);
         messageLabel.setFont(new java.awt.Font("Microsoft JhengHei", java.awt.Font.BOLD, 20)); // 26 是字型大小，可隨意調整
         messageLabel.setForeground(java.awt.Color.DARK_GRAY); // 設定文字顏色
 

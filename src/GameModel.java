@@ -10,6 +10,15 @@ public class GameModel {
     public int bodyLength = 2; // 初始身體長度 (不含頭尾)
     public boolean isStunned = false;
     public boolean isSpeedUp = false;
+    public boolean isPaused = false; // ✨ 新增：記錄遊戲是否處於暫停狀態
+
+
+    // ✨ 新增：無敵狀態控制變數
+    public boolean hasShield = false; // 是否持有護盾
+    public int shieldTimer = 0;       // 護盾剩餘時間
+
+    public String currentEntranceDir = "CENTER"; // 記錄本關蛇是從哪裡出生的，死掉時才能回到對應的起點
+
     public int gameSession = 0; // 每次開始新遊戲就 +1
 
     // ✨ 新增：儲存障礙物的清單
@@ -33,23 +42,30 @@ public class GameModel {
 
     // 初始化或重新開始遊戲
     public void reset() {
-        score = 0;
+        // ✨ 注意：這裡不要清空 score，因為 nextLevel 呼叫 reset 時分數不能少
         bodyLength = 2;
         currentLevel = 1;
         fruitsCollectedThisLevel = 0;
         snake.clear();
         items.clear();
-        exitCells.clear(); // 每次重置遊戲狀態時，確保通道也會被完全清空
+        exitCells.clear();
         obstacles.clear();
+        isPaused = false; // ✨ 每次重置遊戲時，確保不會一開始就卡在暫停
 
-        // 初始位置：頭在 (5,5)，身體在下方
+
+        // ✨ 重置無敵狀態
+        hasShield = false;
+        shieldTimer = 0;
+
+        currentEntranceDir = "CENTER"; // 第一關預設在中央
+
+        // 初始位置：頭在 (5,5)
         snake.add(new SnakeNode(5, 5, "HEAD"));
         snake.add(new SnakeNode(5, 6, "BODY"));
         snake.add(new SnakeNode(5, 7, "BODY"));
         snake.add(new SnakeNode(5, 8, "TAIL"));
     }
 
-    // 檢查座標是否撞到蛇全身
     public boolean checkCollision(int x, int y) {
         for (SnakeNode node : snake) {
             if (node.x == x && node.y == y) return true;
@@ -57,7 +73,6 @@ public class GameModel {
         return false;
     }
 
-    // 更新最高分
     public void updateHighScore() {
         if (score > highScore) {
             highScore = score;

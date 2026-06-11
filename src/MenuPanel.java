@@ -77,17 +77,17 @@ public class MenuPanel extends JPanel {
 
     // 遊戲介紹彈窗
     private void showIntroduction() {
-        String msg = "【Snake Adventure 遊戲介紹】\n\n" +
-                "1. 控制：使用方向鍵控制小藍蛇移動。\n" +
-                "2. 過關：每一關收集足夠數量的紅蘋果，開啟神秘木橋。\n" +
-                "3. 進階：穿過木橋即可進入下一關，難度會隨之提升！\n" +
+        String msg =  "【Snake Adventure 遊戲介紹】\n\n" +
+                "1. 控制：使用方向鍵控制小藍蛇移動，按 P 鍵可暫停遊戲。\n" +
+                "2. 過關：每關收集 3 顆紅蘋果，開啟神秘木橋。\n" +
+                "3. 計分：每穿過一次木橋進入下一關加 1 分！吃道具不會加分。\n" +
                 "4. 道具：\n" +
-                "   - 金蘋果：獲得大量分數。\n" +
-                "   - 藍蘋果：可能獲得加速或陷入暈眩反向控制。\n" +
-                "5. 挑戰：避開岩石與自己的身體，挑戰最高分吧！";
+                "   - 金色蘋果：獲得 5 秒護盾，可抵擋一次撞擊並回到中央重生。\n" +
+                "   - 藍色水晶：使小藍蛇移動速度翻倍，持續 8 秒。\n" +
+                "   - 紫色蘋果：50% 機率使身體縮短，50% 機率陷入暈眩反向控制。\n" +
+                "5. 挑戰：每過 2 關會多出 1 顆岩石，考驗你的走位極限！";
         JOptionPane.showMessageDialog(this, msg, "遊戲介紹", JOptionPane.INFORMATION_MESSAGE);
     }
-
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);

@@ -10,7 +10,7 @@ public class GamePanel extends JPanel {
     private Image gameFrameImage;
     private Image snakeHeadImg;
     private Image snakeBodyImg;
-    private Image gateImg; // ✨ 新增：通道/閘門圖片
+    private Image gateImg;
     private Image rockImg;
 
     public final int TILE_SIZE = 36;
@@ -30,22 +30,25 @@ public class GamePanel extends JPanel {
     private void loadImages() {
         try {
             redImg = ImageIO.read(new File("resources/red_apple.png"));
-            goldImg = ImageIO.read(new File("resources/blue_apple.png"));
+            goldImg = ImageIO.read(new File("resources/gold_apple.png"));
+
+            // 💡 修正：對齊你實際的圖片檔名 purple.png 與 blue_apple.png
             poisonImg = ImageIO.read(new File("resources/purple.png"));
+            speedImg = ImageIO.read(new File("resources/blue_apple.png"));
+
+            // 狀態變數與上方加載的圖片同步
             stunImg = poisonImg;
-            speedImg = goldImg;
             trophyImg = ImageIO.read(new File("resources/trophy.png"));
             gameFrameImage = ImageIO.read(new File("resources/game_frame.png"));
             snakeHeadImg = ImageIO.read(new File("resources/snake_head.png"));
             snakeBodyImg = ImageIO.read(new File("resources/snake_body.png"));
-            rockImg = ImageIO.read(new File("resources/rock.png")); // ✨ 讀取障礙物圖片
-
-            // ✨ 載入新的通道圖片
+            rockImg = ImageIO.read(new File("resources/rock.png"));
             gateImg = ImageIO.read(new File("resources/gate.png"));
         } catch (Exception e) {
             System.out.println("提示：部分圖片尚未放入 resources 資料夾，將使用預設顏色。");
         }
     }
+
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -79,54 +82,39 @@ public class GamePanel extends JPanel {
                 g2d.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
         }
-        // ✨ 【圖層 2.2：障礙物層】畫在綠色草地上
+
+        // 【圖層 2.2：障礙物層】畫在綠色草地上
         for (Point p : model.obstacles) {
             if (rockImg != null) {
-                // 1. 算出這個格子的「絕對中心點座標」
                 int centerX = p.x * TILE_SIZE + (TILE_SIZE / 2);
                 int centerY = p.y * TILE_SIZE + (TILE_SIZE / 2);
-
-                // 2. 決定石頭要畫多大 (這裡設定為格子的 1.25 倍大，以覆蓋透明邊界)
-                // 你可以隨意修改 1.25 這個數字，中心點都不會跑掉
                 int drawSize = (int)(TILE_SIZE * 1.5);
-
-                // 3. 根據中心點，往左上方推算圖片的繪製起點
                 int drawX = centerX - (drawSize / 2);
                 int drawY = centerY - (drawSize / 2);
-
                 g2d.drawImage(rockImg, drawX, drawY, drawSize, drawSize, null);
             } else {
-                // 如果沒有圖片，畫一個完全填滿整格的深灰色方塊代替
                 g2d.setColor(Color.DARK_GRAY);
                 g2d.fillRoundRect(p.x * TILE_SIZE, p.y * TILE_SIZE, TILE_SIZE, TILE_SIZE, 8, 8);
             }
         }
 
-        // ✨ 【圖層 2.5：通道層】畫在網格之上、蛇的下方
+        // 【圖層 2.5：通道層】畫在網格之上、蛇的下方
         if (!model.exitCells.isEmpty()) {
             int boardSize = GRID_COUNT * TILE_SIZE;
             int max = GRID_COUNT - 1;
-
             int bridgeLength = 4 * TILE_SIZE;
-
-            // 💡 關鍵修正：圖片兩側自帶透明留白會產生縫隙。
-            // 我們設定一個 overlap (重疊值)，讓橋向棋盤內部多延伸一點，完美吃掉那個留白！
-            int overlap = 22; // 這裡設定約半格多一點，你可以微調這個數字直到完美銜接
+            int overlap = 22;
 
             if (model.exitCells.contains(new Point(4, 0))) {
-                // 上方通道：長度往下多加 overlap
                 drawGate(g2d, 4 * TILE_SIZE, -bridgeLength, 2 * TILE_SIZE, bridgeLength + overlap, true);
             }
             if (model.exitCells.contains(new Point(4, max))) {
-                // 下方通道：起點往上拉 overlap，同時長度加上 overlap
                 drawGate(g2d, 4 * TILE_SIZE, boardSize - overlap, 2 * TILE_SIZE, bridgeLength + overlap, true);
             }
             if (model.exitCells.contains(new Point(0, 4))) {
-                // 左方通道：長度往右多加 overlap
                 drawGate(g2d, -bridgeLength, 4 * TILE_SIZE, bridgeLength + overlap, 2 * TILE_SIZE, false);
             }
             if (model.exitCells.contains(new Point(max, 4))) {
-                // 右方通道：起點往左拉 overlap，同時長度加上 overlap
                 drawGate(g2d, boardSize - overlap, 4 * TILE_SIZE, bridgeLength + overlap, 2 * TILE_SIZE, false);
             }
         }
@@ -149,10 +137,11 @@ public class GamePanel extends JPanel {
                         int dx = node.x - nextNode.x;
                         int dy = node.y - nextNode.y;
 
-                        if (dx == 1)       angle = -Math.PI / 2.0;
-                        else if (dx == -1) angle = Math.PI / 2.0;
-                        else if (dy == -1) angle = Math.PI;
-                        else if (dy == 1)  angle = 0;
+                        // ✨ 修正版：使用正負號判斷，相容邊界傳送與新關卡生成
+                        if (dx > 0)        angle = -Math.PI / 2.0;
+                        else if (dx < 0)   angle = Math.PI / 2.0;
+                        else if (dy < 0)   angle = Math.PI;
+                        else if (dy > 0)   angle = 0;
                     }
                     g2d.rotate(angle);
 
@@ -202,19 +191,24 @@ public class GamePanel extends JPanel {
         g2d.setFont(new Font("Microsoft JhengHei", Font.BOLD, 24));
         g2d.drawString("SCORE: " + model.score, 20, 52);
 
-        if (model.isSpeedUp) {
-            g2d.setColor(Color.CYAN);
-            g2d.drawString("加速中", 220, 52);
+        // ✨ 護盾狀態優先顯示
+        if (model.isPaused) {
+            g2d.setColor(Color.ORANGE);
+            g2d.drawString("遊戲暫停中", 200, 52);
+        } else if (model.hasShield) { // 原本的護盾邏輯移到 else if
+            g2d.setColor(Color.YELLOW);
+            g2d.drawString("護盾中 (" + model.shieldTimer + "s)", 200, 52);
+        } else {
+            // 沒有護盾與暫停時，才顯示常規的加速與暈眩狀態
+            if (model.isSpeedUp) {
+                g2d.setColor(Color.CYAN);
+                g2d.drawString("加速中", 200, 52);
+            }
+            if (model.isStunned) {
+                g2d.setColor(Color.GREEN);
+                g2d.drawString("暈眩中", 310, 52);
+            }
         }
-        if (model.isStunned) {
-            g2d.setColor(Color.GREEN);
-            g2d.drawString("暈眩中", 330, 52);
-        }
-        if (model.bodyLength <= 0) {
-            g2d.setColor(Color.RED);
-            g2d.drawString("瀕死警告!", 440, 52);
-        }
-
         if (trophyImg != null) {
             g2d.drawImage(trophyImg, panelWidth - 65, 18, 45, 45, null);
         }
@@ -222,26 +216,20 @@ public class GamePanel extends JPanel {
         g2d.drawString("" + model.highScore, panelWidth - 5 - g2d.getFontMetrics().stringWidth("" + model.highScore), 52);
     }
 
-    // ✨ 新增：繪製通道圖片的輔助方法 (自動處理旋轉與視覺放大)
     private void drawGate(Graphics2D g2d, int x, int y, int w, int h, boolean isVertical) {
         if (gateImg != null) {
-            // 💡 關鍵修正：圖片自帶厚重欄杆，硬塞入2格會導致路面太窄。
-            // 我們將寬度向兩側外擴約 0.75 格，讓欄杆落在草地上，中間木板剛好維持完美的 2 格寬！
             int overflow = (int)(TILE_SIZE * 2);
 
             if (isVertical) {
-                // 上下通道：w 是 2格，h 是長度
                 int drawW = w + overflow * 2;
                 int drawX = x - overflow;
 
                 AffineTransform oldTransform = g2d.getTransform();
-                // 旋轉中心點保持在 2 格通道的正中央
                 g2d.translate(drawX + drawW / 2.0, y + h / 2.0);
                 g2d.rotate(Math.PI / 2);
                 g2d.drawImage(gateImg, -h / 2, -drawW / 2, h, drawW, null);
                 g2d.setTransform(oldTransform);
             } else {
-                // 左右通道：w 是長度，h 是 2格
                 int drawH = h + overflow * 2;
                 int drawY = y - overflow;
                 g2d.drawImage(gateImg, x, drawY, w, drawH, null);

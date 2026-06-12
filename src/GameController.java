@@ -485,50 +485,56 @@ public class GameController extends KeyAdapter {
         }
     }
 
-    // ✨ 新增：隨機生成特殊地形
+    // ✨ 新增：依照機率隨機生成特殊地形
     private void spawnTerrains() {
         model.iceCells.clear();
         model.swampCells.clear();
         Random r = new Random();
 
-        // 隨著層數增加，地形區塊也會稍微變多 (每層 2~4 塊)
-        int numIce = 2 + r.nextInt(3);
-        int numSwamp = 2 + r.nextInt(3);
+        // 1. 決定這一層總共要抽出幾個「特殊地形」格子
+        // 基礎 4 個，每 2 層多 1 個，最多不超過 12 個，避免地圖太滿沒路走
+        int totalTerrains = 4 + ((model.currentLevel - 1) / 2);
+        totalTerrains = Math.min(totalTerrains, 12);
 
-        // 生成冰塊
         int tries = 0;
-        while (model.iceCells.size() < numIce && tries < 50) {
-            int rx = r.nextInt(model.GRID_SIZE);
-            int ry = r.nextInt(model.GRID_SIZE);
-            Point p = new Point(rx, ry);
-            // 確保不跟蛇、石頭、十字路口重疊
-            boolean isCrossHighway = (rx == 4 || rx == 5 || ry == 4 || ry == 5);
-            if (!model.checkCollision(rx, ry) && !model.obstacles.contains(p) && !isCrossHighway) {
-                model.iceCells.add(p);
-            }
-            tries++;
-        }
+        int spawned = 0;
 
-        // 生成泥沼
-        tries = 0;
-        while (model.swampCells.size() < numSwamp && tries < 50) {
+        // 2. 開始在地圖上隨機找空地「抽獎」
+        while (spawned < totalTerrains && tries < 100) {
             int rx = r.nextInt(model.GRID_SIZE);
             int ry = r.nextInt(model.GRID_SIZE);
             Point p = new Point(rx, ry);
 
-            // 💡 補上這行！因為 rx 跟 ry 都是重新隨機產生的，所以要再算一次是不是十字路口
+            // 檢查是否為十字路口 (通道出入口)
             boolean isCrossHighway = (rx == 4 || rx == 5 || ry == 4 || ry == 5);
 
-            if (!model.checkCollision(rx, ry) && !model.obstacles.contains(p) && !model.iceCells.contains(p) && !isCrossHighway) {
-                model.swampCells.add(p);
+            // 確保這個位置沒有蛇、沒有石頭、沒有已經生成的冰塊或泥沼、也不是十字路口
+            if (!model.checkCollision(rx, ry) && !model.obstacles.contains(p)
+                    && !model.iceCells.contains(p) && !model.swampCells.contains(p)
+                    && !isCrossHighway) {
+
+                // 💡 關鍵：生成 0 ~ 99 的隨機數來決定這個空地變成什麼
+                int rand = r.nextInt(100);
+
+                if (rand < 20) {
+                    model.iceCells.add(p);   // ❄️ 0 ~ 19 (20% 機率)：變成冰塊
+                } else if (rand < 70) {
+                    model.swampCells.add(p); // 🟤 40 ~ 89 (50% 機率)：變成泥沼
+                } else {
+                    // 🌱 90 ~ 99 (10% 機率)：什麼都不發生 (維持普通草地)
+                }
+
+                // 無論抽到什麼，都算作已經處理完一個地形額度
+                spawned++;
             }
-            tries++;
+            tries++; // 防止找不到空地導致無窮迴圈的保險機制
         }
     }
 
     private void spawnItems() {
         model.items.clear();
         Random r = new Random();
+
         int redAppleTarget = 3 + (model.currentLevel - 1);
         int totalAppleTarget = redAppleTarget + 2;
 
@@ -553,10 +559,10 @@ public class GameController extends KeyAdapter {
                     // 💡 調整機率：生成 0~99 的隨機數
                     int rand = r.nextInt(100);
 
-                    if (rand < 10) {
-                        model.items.add(new GoldApple(rx, ry)); // 🌟 0 ~ 9 共 10% 機率：金色無敵護盾
+                    if (rand < 20) {
+                        model.items.add(new GoldApple(rx, ry)); // 🌟 0 ~ 19 共 20% 機率：金色無敵護盾
                     } else if (rand < 55) {
-                        model.items.add(new PurpleApple(rx, ry)); // 10 ~ 54 共 45% 機率：紫色二選一
+                        model.items.add(new PurpleApple(rx, ry)); // 20 ~ 54 共 35% 機率：紫色二選一
                     } else {
                         model.items.add(new BlueCrystal(rx, ry)); // 55 ~ 99 共 45% 機率：藍色水晶加速
                     }

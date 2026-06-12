@@ -29,6 +29,10 @@ public class GameModel {
     // 道具清單
     public List<Item> items = new ArrayList<>();
 
+    // ✨ 新增：特殊地形清單
+    public List<Point> iceCells = new ArrayList<>();
+    public List<Point> swampCells = new ArrayList<>();
+
     // 關卡與通道控制變數
     public int currentLevel = 1;
     public int fruitsCollectedThisLevel = 0;
@@ -53,6 +57,8 @@ public class GameModel {
         items.clear();
         exitCells.clear();
         obstacles.clear();
+        iceCells.clear();   // ✨ 清空冰塊
+        swampCells.clear(); // ✨ 清空泥沼
 
         isPaused = false;
         isRespawning = false;
@@ -75,13 +81,6 @@ public class GameModel {
         }
         return false;
     }
-
-    // 儲存障礙物的清單
-    public List<Point> obstacles = new ArrayList<>();
-
-    // ✨ 新增：特殊地形清單
-    public List<Point> iceCells = new ArrayList<>();
-    public List<Point> swampCells = new ArrayList<>();
 
     // ✨ 修改：更新最高分與排行榜機制
     public void updateHighScore() {

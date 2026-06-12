@@ -77,15 +77,22 @@ public class MenuPanel extends JPanel {
 
     private void showIntroduction() {
         String msg =  "【Snake Adventure 遊戲介紹】\n\n" +
-                "1. 控制：使用方向鍵控制小藍蛇移動，按 P 鍵可暫停遊戲。\n" +
-                "2. 過關：每關收集 3 顆紅蘋果，開啟神秘木橋。\n" +
-                "3. 計分：每穿過一次木橋進入下一關加 1 分！吃道具不會加分。\n" +
-                "4. 道具：\n" +
-                "   - 金色蘋果：獲得 5 秒護盾，可抵擋一次撞擊並回到中央重生。\n" +
-                "   - 藍色水晶：使小藍蛇移動速度翻倍，持續 8 秒。\n" +
-                "   - 紫色蘋果：50% 機率使身體縮短，50% 機率陷入暈眩反向控制。\n" +
-                "5. 挑戰：每過 2 關會多出 1 顆岩石，考驗你的走位極限！";
-        JOptionPane.showMessageDialog(this, msg, "遊戲介紹", JOptionPane.INFORMATION_MESSAGE);
+                "1. 控制與計分：方向鍵移動，按 P 鍵暫停。收集 3 顆紅蘋果開啟木橋，過橋即加 1 分！\n\n" +
+                "2. 道具效果：\n" +
+                "   - 金蘋果：獲得 5 秒護盾，可抵擋一次撞擊並安全回到中央重生。\n" +
+                "   - 藍水晶：使小藍蛇移動速度翻倍，持續 8 秒。\n" +
+                "   - 紫蘋果：50% 機率使身體縮短，50% 機率陷入暈眩（方向鍵反轉）。\n\n" +
+                "3. 特殊地形與障礙：\n" +
+                "   - 岩石：每過 2 關會多出 1 顆，考驗你的走位極限。\n" +
+                "   - 冰塊：極度濕滑！在冰塊上無法轉彎，只能不受控地直線滑行。\n" +
+                "   - 泥沼：步履維艱！踩在泥沼上移動速度會瞬間減半。\n\n" +
+                "4. 榮譽榜：系統會永久保存歷史前五名的高分紀錄，努力留下你的名字吧！";
+
+        // 為了讓行距跟字體稍微大一點，看起來更舒服，我們可以用 JLabel 包裝
+        JLabel label = new JLabel("<html>" + msg.replaceAll("\n", "<br>") + "</html>");
+        label.setFont(new Font("Microsoft JhengHei", Font.PLAIN, 15));
+
+        JOptionPane.showMessageDialog(this, label, "遊戲介紹", JOptionPane.INFORMATION_MESSAGE);
     }
 
     // 🏆 ✨ 新增方法：彈出歷史前五名視窗

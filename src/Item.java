@@ -33,7 +33,7 @@ class RedApple extends Item {
     @Override
     public void draw(Graphics g, int gridSize, GamePanel panel) {
         if (panel.redImg != null) {
-            drawCenteredImage(g, panel.redImg, gridSize, 0.9, 1.15);
+            drawCenteredImage(g, panel.redImg, gridSize, 0.9, 1.0);
         } else {
             g.setColor(Color.RED);
             g.fillOval(x * gridSize + 2, y * gridSize + 2, gridSize - 4, gridSize - 4);
@@ -51,7 +51,7 @@ class GoldApple extends Item {
     @Override
     public void draw(Graphics g, int gridSize, GamePanel panel) {
         if (panel.goldImg != null) {
-            drawCenteredImage(g, panel.goldImg, gridSize, 0.9, 1.15);
+            drawCenteredImage(g, panel.goldImg, gridSize, 0.9, 1);
         } else {
             g.setColor(Color.YELLOW);
             g.fillOval(x * gridSize + 2, y * gridSize + 2, gridSize - 4, gridSize - 4);

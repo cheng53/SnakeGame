@@ -12,6 +12,8 @@ public class GamePanel extends JPanel {
     private Image snakeBodyImg;
     private Image gateImg;
     private Image rockImg;
+    private Image iceImg;
+    private Image swampImg;
 
     public final int TILE_SIZE = 36;
     private final int GRID_COUNT;
@@ -44,6 +46,9 @@ public class GamePanel extends JPanel {
             snakeBodyImg = ImageIO.read(new File("resources/snake_body.png"));
             rockImg = ImageIO.read(new File("resources/rock.png"));
             gateImg = ImageIO.read(new File("resources/gate.png"));
+            // ✨ 新增這兩行：從資源夾讀取地形圖片
+            iceImg = ImageIO.read(new File("resources/ice.png"));
+            swampImg = ImageIO.read(new File("resources/swamp.png"));
         } catch (Exception e) {
             System.out.println("提示：部分圖片尚未放入 resources 資料夾，將使用預設顏色。");
         }
@@ -77,16 +82,52 @@ public class GamePanel extends JPanel {
         // 【圖層 2：中層】繪製半透明的棋盤
         // ==========================================
         // 1. 底框改為半透明 (第四個參數 120 代表大約 50% 的透明度)
-        g2d.setColor(new Color(96, 144, 44, 120));
+        //g2d.setColor(new Color(96, 144, 44));
+        g2d.setColor(new Color(96, 144, 44, 150));
         g2d.fillRect(-4, -4, gameWidth + 8, gameHeight + 8);
 
         for (int row = 0; row < GRID_COUNT; row++) {
             for (int col = 0; col < GRID_COUNT; col++) {
                 // 2. 棋盤格子也加上透明度 (這裡設為 80，讓它比底框更透一點)
-                g2d.setColor((row + col) % 2 == 0 ? new Color(132, 178, 65, 80) : new Color(121, 166, 56, 80));
+                //g2d.setColor((row + col) % 2 == 0 ? new Color(132, 178, 65) : new Color(121, 166, 56));
+                g2d.setColor((row + col) % 2 == 0 ? new Color(132, 178, 65, 100) : new Color(121, 166, 56, 100));
                 g2d.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
         }
+
+        // ==========================================
+        // 【圖層 2.1：特殊地形層】冰塊與泥沼
+        // ==========================================
+        // 畫泥沼
+        for (Point p : model.swampCells) {
+            if (swampImg != null) {
+                // ✨ 有圖片時：畫出泥沼圖片 (大小設定為剛好填滿一格 TILE_SIZE)
+                g2d.drawImage(swampImg, p.x * TILE_SIZE, p.y * TILE_SIZE, TILE_SIZE, TILE_SIZE, null);
+            } else {
+                // 找不到圖片時的防呆設計 (原本的色塊)
+                g2d.setColor(new Color(101, 67, 33, 160));
+                g2d.fillRect(p.x * TILE_SIZE, p.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                g2d.setColor(new Color(60, 40, 20, 160));
+                g2d.fillOval(p.x * TILE_SIZE + 5, p.y * TILE_SIZE + 10, 15, 8);
+                g2d.fillOval(p.x * TILE_SIZE + 20, p.y * TILE_SIZE + 20, 10, 5);
+            }
+        }
+
+        // 畫冰塊
+        for (Point p : model.iceCells) {
+            if (iceImg != null) {
+                // ✨ 有圖片時：畫出冰塊圖片
+                g2d.drawImage(iceImg, p.x * TILE_SIZE, p.y * TILE_SIZE, TILE_SIZE, TILE_SIZE, null);
+            } else {
+                // 找不到圖片時的防呆設計 (原本的色塊)
+                g2d.setColor(new Color(173, 216, 230, 180));
+                g2d.fillRect(p.x * TILE_SIZE, p.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                g2d.setColor(new Color(255, 255, 255, 200));
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawLine(p.x * TILE_SIZE + 22, p.y * TILE_SIZE + 6, p.x * TILE_SIZE + 30, p.y * TILE_SIZE + 14);
+            }
+        }
+
 
         // 【圖層 2.2：障礙物層】畫在綠色草地上
         for (Point p : model.obstacles) {

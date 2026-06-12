@@ -57,6 +57,8 @@ public class GameController extends KeyAdapter {
         itemRefreshTimer.start();
         spawnObstacles();
         spawnItems();
+        spawnTerrains();
+
     }
     private void moveSnake() {
         if (model.isPaused) return; // ✨ 安全防護：如果是暫停狀態，絕對不執行任何移動與碰撞邏輯
@@ -174,7 +176,7 @@ public class GameController extends KeyAdapter {
                 model.exitCells.clear();
             }
         }
-
+        updateSpeed(); // ✨ 隨時檢查是否踩在泥沼上並更新速度
         panel.repaint();
     }
 
@@ -265,6 +267,7 @@ public class GameController extends KeyAdapter {
 
         spawnObstacles();
         spawnItems();
+        spawnTerrains();
     }
 
     private void respawnSnake() {
@@ -382,9 +385,16 @@ public class GameController extends KeyAdapter {
         });
         t.start();
     }
-
     private void updateSpeed() {
         int newDelay = (int) (BASE_SPEED / Math.pow(2, speedLayers));
+
+        // ✨ 泥沼判定：如果蛇頭踩在泥沼上，移動延遲強制乘以 2 (速度減半)
+        if (model.snake != null && !model.snake.isEmpty()) {
+            Point head = new Point(model.snake.get(0).x, model.snake.get(0).y);
+            if (model.swampCells.contains(head)) {
+                newDelay *= 2;
+            }
+        }
         gameTimer.setDelay(Math.max(50, newDelay));
     }
 
@@ -394,9 +404,9 @@ public class GameController extends KeyAdapter {
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
 
-        // ✨ 新增：按下 P 鍵切換暫停狀態
+        // 1. 處理 P 鍵暫停
         if (key == KeyEvent.VK_P) {
-            if (model.isRespawning) return; // 💡 防呆：重生倒數期間不允許操作手動暫停
+            if (model.isRespawning) return; // 防呆：重生倒數期間不允許操作手動暫停
 
             model.isPaused = !model.isPaused;
             if (model.isPaused) {
@@ -410,9 +420,23 @@ public class GameController extends KeyAdapter {
             return;
         }
 
-        // 💡 防呆：如果目前是暫停狀態或重生倒數中，鎖死方向鍵，不允許改變蛇的前進方向
+        // 2. 防呆：如果目前是暫停狀態或重生倒數中，鎖死方向鍵
         if (model.isPaused || model.isRespawning) return;
 
+        // 3. ✨ 冰塊地形效果 (升級版)：檢查「整條蛇」是否完全離開冰塊
+        boolean isOnIce = false;
+        for (SnakeNode node : model.snake) {
+            Point p = new Point(node.x, node.y);
+            if (model.iceCells.contains(p)) {
+                isOnIce = true;
+                break; // 💡 只要發現有任何一節身體還在冰上，就提早結束檢查
+            }
+        }
+        // 如果還在冰上，直接 return 忽略玩家的按鍵輸入
+        if (isOnIce) {
+            return;
+        }
+        // 4. 處理方向鍵與暈眩反轉
         boolean isStunned = (stunLayers % 2 != 0);
         int intentDx = 0, intentDy = 0;
 
@@ -428,13 +452,12 @@ public class GameController extends KeyAdapter {
             return;
         }
 
-        // 防自殺判定
+        // 5. 防自殺判定 (不能直接180度回頭)
         if (intentDx != -dx && intentDy != -dy) {
             nextDx = intentDx;
             nextDy = intentDy;
         }
     }
-
 
     private void spawnObstacles() {
         model.obstacles.clear();
@@ -462,6 +485,46 @@ public class GameController extends KeyAdapter {
         }
     }
 
+    // ✨ 新增：隨機生成特殊地形
+    private void spawnTerrains() {
+        model.iceCells.clear();
+        model.swampCells.clear();
+        Random r = new Random();
+
+        // 隨著層數增加，地形區塊也會稍微變多 (每層 2~4 塊)
+        int numIce = 2 + r.nextInt(3);
+        int numSwamp = 2 + r.nextInt(3);
+
+        // 生成冰塊
+        int tries = 0;
+        while (model.iceCells.size() < numIce && tries < 50) {
+            int rx = r.nextInt(model.GRID_SIZE);
+            int ry = r.nextInt(model.GRID_SIZE);
+            Point p = new Point(rx, ry);
+            // 確保不跟蛇、石頭、十字路口重疊
+            boolean isCrossHighway = (rx == 4 || rx == 5 || ry == 4 || ry == 5);
+            if (!model.checkCollision(rx, ry) && !model.obstacles.contains(p) && !isCrossHighway) {
+                model.iceCells.add(p);
+            }
+            tries++;
+        }
+
+        // 生成泥沼
+        tries = 0;
+        while (model.swampCells.size() < numSwamp && tries < 50) {
+            int rx = r.nextInt(model.GRID_SIZE);
+            int ry = r.nextInt(model.GRID_SIZE);
+            Point p = new Point(rx, ry);
+
+            // 💡 補上這行！因為 rx 跟 ry 都是重新隨機產生的，所以要再算一次是不是十字路口
+            boolean isCrossHighway = (rx == 4 || rx == 5 || ry == 4 || ry == 5);
+
+            if (!model.checkCollision(rx, ry) && !model.obstacles.contains(p) && !model.iceCells.contains(p) && !isCrossHighway) {
+                model.swampCells.add(p);
+            }
+            tries++;
+        }
+    }
 
     private void spawnItems() {
         model.items.clear();
